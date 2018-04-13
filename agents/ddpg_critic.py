@@ -25,8 +25,8 @@ class Critic:
 
         self.y = tf.placeholder(tf.float32, (None, 1), name='critic/y')
         loss = tf.losses.mean_squared_error(self.y, self.current)
-        #with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
+        with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
         self.tau = tf.placeholder(tf.float32, name='critic/tau')
         self.assignments = [tf.assign(t, c * self.tau + (1-self.tau) * t)
@@ -43,16 +43,16 @@ class Critic:
     def create_model(self, input_states, input_actions, task, scope_name, training=False, reuse=False):
 
         with tf.variable_scope(scope_name, reuse=reuse):
-            g = 0.0001
+            g = 1
             # 2 layers of states
-            dense_s = tf.layers.dense(input_states, 64,
+            dense_s = tf.layers.dense(input_states, 32,
                                       activation=tf.nn.relu,
                                       kernel_initializer=tf.contrib.layers.xavier_initializer())
             # dense_s = tf.layers.dropout(dense_s, 0.5, training=training)
             # dense_s = tf.nn.l2_normalize(dense_s, epsilon=0.01)
             # dense_s = tf.layers.batch_normalization(dense_s, training=training)
 
-            dense_s = tf.layers.dense(dense_s, 64,
+            dense_s = tf.layers.dense(dense_s, 32,
                                       activation=tf.nn.relu,
                                       kernel_initializer=tf.contrib.layers.xavier_initializer())
             # dense_s = tf.layers.dropout(dense_s, 0.5, training=training)
@@ -60,7 +60,7 @@ class Critic:
             # dense_s = tf.layers.batch_normalization(dense_s, training=training)
 
             # One layer of actions
-            dense_a = tf.layers.dense(input_actions, 64,
+            dense_a = tf.layers.dense(input_actions, 32,
                                       activation=tf.nn.relu,
                                       kernel_initializer=tf.contrib.layers.xavier_initializer())
             # dense_a = tf.layers.dropout(dense_a, 0.5, training=training)
@@ -71,14 +71,14 @@ class Critic:
             dense = tf.concat([dense_s, dense_a], axis=1)
 
             # Decision layers
-            dense = tf.layers.dense(dense, 64,
-                                    activation=tf.nn.relu,
-                                    kernel_initializer=tf.contrib.layers.xavier_initializer())
+            # dense = tf.layers.dense(dense, 32,
+            #                         activation=tf.nn.relu,
+            #                         kernel_initializer=tf.contrib.layers.xavier_initializer())
             # dense = tf.layers.dropout(dense, 0.5, training=training)
             # dense = tf.nn.l2_normalize(dense, epsilon=0.01)
             # dense = tf.layers.batch_normalization(dense, training=training)
 
-            dense = tf.layers.dense(dense, 64,
+            dense = tf.layers.dense(dense, 32,
                                     activation=tf.nn.relu,
                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
             # dense = tf.layers.dropout(dense, 0.5, training=training)
