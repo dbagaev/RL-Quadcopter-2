@@ -4,7 +4,7 @@ from physics_sim import PhysicsSim
 class Task():
     """Task (environment) that defines the goal and provides feedback to the agent."""
     def __init__(self, init_pose=None, init_velocities=None, 
-        init_angle_velocities=None, runtime=5., target_pos=None):
+        init_angle_velocities=None, runtime=5., target_pos=None, simplified=False):
         """Initialize a Task object.
         Params
         ======
@@ -16,14 +16,14 @@ class Task():
         """
         # Simulation
         self.sim = PhysicsSim(init_pose, init_velocities, init_angle_velocities, runtime) 
-        self.action_repeat = 3
+        self.action_repeat = 1
 
         self.state_size = self.action_repeat * len(self.state)
 
         self.action_low = 0
         self.action_high = 900
 
-        self.simplified = True
+        self.simplified = simplified
 
         if self.simplified:
             self.action_size = 1
@@ -58,14 +58,18 @@ class Task():
 
         for _ in range(self.action_repeat):
             self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
-            reward += self.get_reward() 
+            reward += self.get_reward()
             state_all.append(self.state)
+            if self.sim.done:
+                for __ in range(_+1, self.action_repeat):
+                    state_all.append(self.state)
+                break
         next_state = np.concatenate(state_all)
         return next_state, reward, self.done
 
     @property
     def state(self):
-        return np.append(self.sim.pose, self.sim.v)
+        return np.append(self.sim.pose, np.append(self.sim.v, self.sim.angular_v))
 
     @property
     def position(self):
@@ -77,11 +81,15 @@ class Task():
 
     @property
     def timeout(self):
-        return self.sim.done
+        return self.sim.time > self.sim.runtime
+
+    @property
+    def out_of_bounds(self):
+        return self.sim.done and self.sim.time < self.sim.runtime
 
     @property
     def done(self):
-        return self.timeout or self.is_task_finished()
+        return self.timeout or self.out_of_bounds or self.is_task_finished()
 
     def is_task_finished(self):
         return False
