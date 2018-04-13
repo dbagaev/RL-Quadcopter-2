@@ -21,7 +21,7 @@ print('')
 for s in range(100, 200, 10):
     print('@{:4.1f}: '.format(s), end='')
     for a in a_values:
-        states = np.array([[0, 0, s, 0, 0, 0, 0, 0, 0] * 3])
+        states = np.array([[0, 0, s, 0, 0, 0, 0, 0, 25]])
         actions = np.array([[a]])
 
         q = agent.critic.get_target_value(states, actions)[0]
