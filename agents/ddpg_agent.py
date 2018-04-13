@@ -12,9 +12,9 @@ from .noise import OUNoise, OUNoise2
 
 class DeepDPGAgent(BaseAgent):
     batch_size = 64
-    tau = 0.001
+    tau = 0.01
     gamma = 0.99
-    learning_rate = 0.0001
+    learning_rate = 0.00001
 
     """Implement Deep DPG control agent
 
@@ -22,7 +22,7 @@ class DeepDPGAgent(BaseAgent):
     https://arxiv.org/pdf/1509.02971.pdf
 
     """
-    def __init__(self, task, replay_buffer_size=100000, batch_size=None):
+    def __init__(self, task, replay_buffer_size=10000, batch_size=None):
         """Initialize policy and other agent parameters.
 
         Should be able to access the following (OpenAI Gym spaces):
@@ -32,17 +32,17 @@ class DeepDPGAgent(BaseAgent):
         super().__init__(task)
 
         # Create actor and critic
-        self.critic = Critic(task, learning_rate=DeepDPGAgent.learning_rate * 100)
+        self.critic = Critic(task, learning_rate=DeepDPGAgent.learning_rate * 10)
         self.actor = Actor(task, self.critic, learning_rate = DeepDPGAgent.learning_rate)
 
-        #self.noise = OUNoise2(
-        #    task.num_actions,
-        #    theta=0.15,
-        #    sigma=0.2)
-        self.noise = OUNoise(
+        self.noise = OUNoise2(
             task.num_actions,
             theta=0.15,
-            sigma=25)
+            sigma=10)
+        #self.noise = OUNoise(
+        #    task.num_actions,
+        #    theta=0.15,
+        #    sigma=10)
 
         # Create critic NN
 
@@ -84,11 +84,9 @@ class DeepDPGAgent(BaseAgent):
     def act(self, state):
         action = self.actor.get_action(np.expand_dims(state, axis=0))[0]
 
-        noise = self.noise.sample()
+        action += self.noise.sample()
         for i in range(self.task.num_actions):
-            noise[i] = min(self.task.action_high, max(self.task.action_low, noise[i]))
-
-        action += noise
+            action[i] = min(self.task.action_high, max(self.task.action_low, action[i]))
 
         return action
 
@@ -110,8 +108,9 @@ class DeepDPGAgent(BaseAgent):
             prev_actions = np.array([t[1] for t in batch])
             rewards = np.expand_dims(np.array([t[2] for t in batch]), axis=1)
             states = np.array([t[3] for t in batch])
+            dones = np.expand_dims(np.array([t[4] for t in batch], dtype=np.float32), axis=1)
 
-            y = rewards + self.gamma * self.critic.get_target_value(states, self.actor.get_target_action(states))
+            y = rewards + self.gamma * self.critic.get_target_value(states, self.actor.get_target_action(states)) * (1-dones)
             self.critic.learn(prev_states, prev_actions, y)
             self.actor.learn(prev_states)
 
