@@ -14,7 +14,7 @@ class DeepDPGAgent(BaseAgent):
     batch_size = 64
     tau = 0.01
     gamma = 0.99
-    learning_rate = 0.00001
+    learning_rate = 0.0001
 
     """Implement Deep DPG control agent
 
@@ -35,14 +35,14 @@ class DeepDPGAgent(BaseAgent):
         self.critic = Critic(task, learning_rate=DeepDPGAgent.learning_rate * 10)
         self.actor = Actor(task, self.critic, learning_rate = DeepDPGAgent.learning_rate)
 
-        self.noise = OUNoise2(
-            task.num_actions,
-            theta=0.15,
-            sigma=10)
-        #self.noise = OUNoise(
+        #self.noise = OUNoise2(
         #    task.num_actions,
         #    theta=0.15,
         #    sigma=10)
+        self.noise = OUNoise(
+            task.num_actions,
+            theta=0.15,
+            sigma=1)
 
         # Create critic NN
 
@@ -111,6 +111,7 @@ class DeepDPGAgent(BaseAgent):
             dones = np.expand_dims(np.array([t[4] for t in batch], dtype=np.float32), axis=1)
 
             y = rewards + self.gamma * self.critic.get_target_value(states, self.actor.get_target_action(states)) * (1-dones)
+            self.critic.learn(prev_states, prev_actions, y)
             self.critic.learn(prev_states, prev_actions, y)
             self.actor.learn(prev_states)
 
