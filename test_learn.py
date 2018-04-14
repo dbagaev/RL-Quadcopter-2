@@ -42,7 +42,7 @@ def play_episode(i_episode, agent, task):
         next_state, reward, done = task.step(action)
 
         action_str = ', '.join('{:7.3f}'.format(a) for a in action)
-        position_str = ', '.join('{:7.3f}'.format(a) for a in state)
+        position_str = ', '.join('{:7.3f}'.format(a) for a in state[0:12])
         print('{:5.2f}: [{}] => [{}], R = {:7.3f}'.format(task.sim.time, position_str, action_str, reward))
 
         eposide_score += reward
@@ -54,7 +54,7 @@ def play_episode(i_episode, agent, task):
 
 
 for i_episode in range(num_episodes):
-    if i_episode % 40 == 0:
+    if i_episode % 10 == 0:
         play_episode(i_episode, agent, task)
 
     learn_episode(i_episode, agent, task)
