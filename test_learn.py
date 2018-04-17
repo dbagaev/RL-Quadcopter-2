@@ -1,6 +1,8 @@
 import sys
+import csv
 import numpy as np
 import tensorflow as tf
+from pathlib import Path
 
 from tasks import Takeoff, Hover
 from agents import DeepDPGAgent
@@ -9,6 +11,7 @@ from agents import DeepDPGAgent
 DeepDPGAgent.tau = 0.01
 DeepDPGAgent.gamma = 0.99
 DeepDPGAgent.learning_rate = 0.0001
+DeepDPGAgent.batch_size = 64
 
 # Create task and agent
 # task = Takeoff()
@@ -34,30 +37,66 @@ def learn_episode(i_episode, agent, task):
             break
 
 
-def play_episode(i_episode, agent, task):
+def play_episode(i_episode, agent, task, log_stdout=True):
     state = agent.reset_episode()
     eposide_score = 0.0
-    while True:
-        action = agent.act_target(state)
-        next_state, reward, done = task.step(action)
 
-        action_str = ', '.join('{:7.3f}'.format(a) for a in action)
-        position_str = ', '.join('{:7.3f}'.format(a) for a in state[0:12])
-        print('{:5.2f}: [{}] => [{}], R = {:7.3f}'.format(task.sim.time, position_str, action_str, reward))
+    labels = ['time', 'x', 'y', 'z', 'phi', 'theta', 'psi', 'x_velocity',
+              'y_velocity', 'z_velocity', 'phi_velocity', 'theta_velocity',
+              'psi_velocity'] + ['rotor_speed{}'.format(i+1) for i in range(task.num_actions)]
 
-        eposide_score += reward
-        state = next_state
-        if done:
-            print("Episode = {:4d}, score = {:7.3f} (best = {:7.3f}), noise_scale = {}".format(
-                i_episode, eposide_score, agent.best_score or 0, agent.noise_scale))  # [debug]
-            break
+    # Run the simulation, and save the results.
+    result_dir = Path.cwd() / 'results'
+    if not result_dir.exists():
+        result_dir.mkdir()
+    result_file = result_dir / '{}-ep-{:04d}.log.csv'.format(task.task_name, i_episode+1)
+    with open(str(result_file), 'w') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(labels)
+
+        while True:
+            action = agent.act_target(state)
+            next_state, reward, done = task.step(action)
+
+            if log_stdout:
+                action_str = ', '.join('{:7.3f}'.format(a) for a in action)
+                position_str = ', '.join('{:7.3f}'.format(a) for a in state[0:12])
+                print('{:5.2f}: [{}] => [{}], R = {:7.3f}'.format(task.sim.time, position_str, action_str, reward))
+
+            to_write = [task.sim.time] + list(task.sim.pose) + list(task.sim.v) + list(task.sim.angular_v) + list(action)
+            writer.writerow(to_write)
+
+            eposide_score += reward
+            state = next_state
+            if done:
+                if log_stdout:
+                    print("Episode = {:4d}, score = {:7.3f} (best = {:7.3f}), noise_scale = {}".format(
+                        i_episode, eposide_score, agent.best_score or 0, agent.noise_scale))  # [debug]
+                break
 
 
-for i_episode in range(num_episodes):
-    if i_episode % 10 == 0:
-        play_episode(i_episode, agent, task)
+def learn_agent(num_episodes, agent, task, log_episode_every=100):
+    labels = ['episode', 'reward']
 
-    learn_episode(i_episode, agent, task)
+    # Run the simulation, and save the results.
+    result_dir = Path.cwd() / 'results'
+    if not result_dir.exists():
+        result_dir.mkdir()
+    result_file = result_dir / '{}-rewards.csv'.format(task.task_name)
+    with open(str(result_file), 'w') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(labels)
 
-    sys.stdout.flush()
+        for i_episode in range(num_episodes):
+            if i_episode % log_episode_every == 0:
+                play_episode(i_episode, agent, task)
+            learn_episode(i_episode, agent, task)
 
+            to_write = [i_episode, agent.episode_score]
+            writer.writerow(to_write)
+
+        play_episode(num_episodes, agent, task)
+
+
+
+learn_agent(20, agent, task, log_episode_every=10)
