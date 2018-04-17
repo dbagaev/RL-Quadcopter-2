@@ -7,7 +7,9 @@ from gym import spaces
 from geometry_msgs.msg import Vector3, Point, Quaternion, Pose, Twist, Wrench
 from .quadrocopter_task import QuadrocopterTask
 
-class Hover(QuadrocopterTask):
+from .. import Task
+
+class Hover(Task):
     """Simple task where the goal is to lift off the ground and reach a target height."""
 
     def __init__(self, num_actions=1):
@@ -19,7 +21,7 @@ class Hover(QuadrocopterTask):
         self.max_duration = 10.0  # secs
         self.target_z = 10.0  # target height (z position) to reach for successful takeoff
 
-        self.task_name = 'hover'
+        self.task_name = 'emulator_hover'
 
         self.time_hover = 0
         self.last_time_stamp = 0.0
