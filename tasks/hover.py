@@ -52,10 +52,13 @@ class Hover(Task):
         rotation_penalty = apply_lower_threshold(np.abs(self.sim.angular_v).sum(), 0.5)
 
         # Orientation reward
-        reward -= height_penalty * 1.0 + xy_shift_penalty * 0.01 + too_far_penalty * 0.1 + twist_penalty * 3.0 + rotation_penalty * 0.5
+        reward -= height_penalty * 0.3 + xy_shift_penalty * 0.01 + too_far_penalty * 0.1 + twist_penalty * 3.0 + rotation_penalty * 0.5
 
         # Target closeness reward
         reward += apply_higher_threshold(target_z_distance, 5.0) * 10
+
+        if reward < 0:
+            reward = 3
 
         return reward
 
