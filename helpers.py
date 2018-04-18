@@ -12,7 +12,7 @@ def learn_episode(i_episode, agent, task):
 
         if done:
             print("Episode = {:4d}, score = {:7.3f} (best = {:7.3f}), noise_scale = {}".format(
-                i_episode, agent.episode_score, agent.best_score, agent.noise_scale))  # [debug]
+                i_episode+1, agent.episode_score, agent.best_score, agent.noise_scale))  # [debug]
             break
 
 
@@ -28,7 +28,7 @@ def play_episode(i_episode, agent, task, log_stdout=True):
     result_dir = Path.cwd() / 'results'
     if not result_dir.exists():
         result_dir.mkdir()
-    result_file = result_dir / '{}-ep-{:04d}.log.csv'.format(task.task_name, i_episode+1)
+    result_file = result_dir / '{}-ep-{:04d}.log.csv'.format(task.task_name, i_episode)
     with open(str(result_file), 'w') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(labels)
@@ -49,12 +49,12 @@ def play_episode(i_episode, agent, task, log_stdout=True):
             state = next_state
             if done:
                 if log_stdout:
-                    print("Episode = {:4d}, score = {:7.3f} (best = {:7.3f}), noise_scale = {}".format(
-                        i_episode, eposide_score, agent.best_score or 0, agent.noise_scale))  # [debug]
+                    print("Act episode {:4d}, score = {:7.3f} (best = {:7.3f}), noise_scale = {}".format(
+                        i_episode+1, eposide_score, agent.best_score or 0, agent.noise_scale))  # [debug]
                 break
 
 
-def learn_agent(num_episodes, agent, task, log_episode_every=100):
+def learn_agent(num_episodes, agent, task, log_episode_every=100, episode_start=0):
     labels = ['episode', 'reward']
 
     # Run the simulation, and save the results.
@@ -62,11 +62,15 @@ def learn_agent(num_episodes, agent, task, log_episode_every=100):
     if not result_dir.exists():
         result_dir.mkdir()
     result_file = result_dir / '{}-rewards.csv'.format(task.task_name)
-    with open(str(result_file), 'w') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(labels)
 
-        for i_episode in range(num_episodes):
+    result_file_mode = 'w' if episode_start == 0 else 'a'
+
+    with open(str(result_file), result_file_mode) as csvfile:
+        writer = csv.writer(csvfile)
+        if episode_start == 0:
+            writer.writerow(labels)
+
+        for i_episode in range(episode_start, episode_start+num_episodes):
             if i_episode % log_episode_every == 0:
                 play_episode(i_episode, agent, task)
             learn_episode(i_episode, agent, task)
@@ -74,4 +78,5 @@ def learn_agent(num_episodes, agent, task, log_episode_every=100):
             to_write = [i_episode, agent.episode_score]
             writer.writerow(to_write)
 
-        play_episode(num_episodes, agent, task)
+        # Make final output
+        play_episode(episode_start+num_episodes, agent, task)
