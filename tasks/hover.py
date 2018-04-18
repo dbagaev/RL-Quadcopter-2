@@ -36,7 +36,7 @@ class Hover(Task):
 
         # Compute reward for reaching target height
         target_z_distance = abs(self.target_z - self.position[2])
-        height_penalty = target_z_distance ** 0.7
+        height_penalty = target_z_distance
 
         # Penalize for shifting in horizontal plane
         xy_shift_penalty = math.sqrt(self.position[0]**2 + self.position[1]**2)
@@ -56,8 +56,8 @@ class Hover(Task):
         # Target closeness reward
         reward += apply_higher_threshold(target_z_distance, 5.0) * 10
 
-        if reward < 0:
-            reward = 3
+        #if reward < 0:
+        #    reward = 3
 
         return reward
 
