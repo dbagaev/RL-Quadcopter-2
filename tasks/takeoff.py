@@ -9,6 +9,7 @@ class Takeoff(Task):
     """Simple task where the goal is to lift off the ground and reach a target height."""
 
     def __init__(self, target_z=20., start_z=5., simplified=False):
+        self.task_name = 'takeoff'
         super().__init__(
             target_pos=np.array([0., 0., target_z]),
             init_pose=np.array([0., 0., start_z, 0., 0., 0.]),
@@ -19,8 +20,6 @@ class Takeoff(Task):
         # Task-specific parameters
         self.max_duration = 10.0  # secs
         self.target_z = target_z
-
-        self.task_name = 'takeoff'
 
     def is_task_finished(self):
         return self.position[2] >= self.target_z
