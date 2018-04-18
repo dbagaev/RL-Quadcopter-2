@@ -104,7 +104,7 @@ class Task():
         self.sim.reset()
 
         # Add some randomness to the z coordinate +-5% of height
-        self.sim.pose[2] = np.random.normal(self.sim.pose[2], self.sim.pose[2] * 0.2)
+        self.sim.pose[2] = np.random.normal(self.sim.pose[2], max(min(self.sim.pose[2] * 0.02, 10.0), 1.0))
 
         self.reset_vars()
         state = np.concatenate([self.state] * self.action_repeat)
