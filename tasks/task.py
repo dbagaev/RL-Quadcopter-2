@@ -15,7 +15,7 @@ class Task():
             target_pos: target/goal (x,y,z) position for the agent
         """
         # Simulation
-        self.sim = PhysicsSim(init_pose, init_velocities, init_angle_velocities, runtime) 
+        self.sim = self.create_emulator(init_pose, init_velocities, init_angle_velocities, runtime)
         self.action_repeat = 1
 
         self.state_size = self.action_repeat * len(self.state)
@@ -27,13 +27,15 @@ class Task():
 
         if self.simplified:
             self.action_size = 1
+            self.task_name += '_simplified'
         else:
             self.action_size = 4
 
         # Goal
         self.target_pos = target_pos if target_pos is not None else np.array([0., 0., 10.])
 
-        self.task_name = 'default'
+    def create_emulator(self, init_pose, init_velocities, init_angle_velocities, runtime):
+        return PhysicsSim(init_pose, init_velocities, init_angle_velocities, runtime)
 
     def get_reward(self):
         """Uses current pose of sim to return reward."""
@@ -48,16 +50,16 @@ class Task():
     def num_actions(self):
         return self.action_size
 
-    def step(self, rotor_speeds):
+    def step(self, action):
         """Uses action to obtain next state, reward, done."""
         reward = 0
         state_all = []
 
         if self.simplified:
-            rotor_speeds = np.array([rotor_speeds[0]] * 4)
+            action = self.simplified_action_to_full(action)
 
         for _ in range(self.action_repeat):
-            self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
+            self.sim.next_timestep(action) # update the sim pose and velocities
             reward += self.get_reward()
             state_all.append(self.state)
             if self.sim.done:
@@ -66,6 +68,9 @@ class Task():
                 break
         next_state = np.concatenate(state_all)
         return next_state, reward, self.done
+
+    def simplified_action_to_full(self, action):
+        return np.array([action[0]] * 4)
 
     @property
     def state(self):
@@ -97,6 +102,10 @@ class Task():
     def reset(self):
         """Reset the sim to start a new episode."""
         self.sim.reset()
+
+        # Add some randomness to the z coordinate +-5% of height
+        self.sim.pose[2] = np.random.normal(self.sim.pose[2], self.sim.pose[2] * 0.2)
+
         self.reset_vars()
         state = np.concatenate([self.state] * self.action_repeat)
         return state
