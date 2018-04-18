@@ -15,6 +15,7 @@ class DeepDPGAgent(BaseAgent):
     tau = 0.01
     gamma = 0.99
     learning_rate = 0.0001
+    replay_buffer_size = 100000
 
     """Implement Deep DPG control agent
 
@@ -22,7 +23,7 @@ class DeepDPGAgent(BaseAgent):
     https://arxiv.org/pdf/1509.02971.pdf
 
     """
-    def __init__(self, task, replay_buffer_size=10000, batch_size=None):
+    def __init__(self, task, replay_buffer_size=None, batch_size=None):
         """Initialize policy and other agent parameters.
 
         Should be able to access the following (OpenAI Gym spaces):
@@ -35,18 +36,15 @@ class DeepDPGAgent(BaseAgent):
         self.critic = Critic(task, learning_rate=DeepDPGAgent.learning_rate * 10)
         self.actor = Actor(task, self.critic, learning_rate = DeepDPGAgent.learning_rate)
 
-        #self.noise = OUNoise2(
-        #    task.num_actions,
-        #    theta=0.15,
-        #    sigma=10)
-        self.noise = OUNoise(
+        self.noise = OUNoise2(
+        #self.noise = OUNoise(
             task.num_actions,
             theta=0.15,
-            sigma=1)
+            sigma=0.2)
 
         # Create critic NN
-
-        self.replay_buffer = ReplayBuffer(replay_buffer_size)
+        self.replay_buffer_size = replay_buffer_size if replay_buffer_size is not None else DeepDPGAgent.replay_buffer_size
+        self.replay_buffer = ReplayBuffer(self.replay_buffer_size)
 
         self.session = tf.Session()
         self.session.run(tf.global_variables_initializer())
@@ -85,8 +83,11 @@ class DeepDPGAgent(BaseAgent):
         action = self.actor.get_action(np.expand_dims(state, axis=0))[0]
 
         action += self.noise.sample()
-        for i in range(self.task.num_actions):
-            action[i] = min(self.task.action_high, max(self.task.action_low, action[i]))
+        action_min = np.empty(self.task.num_actions)
+        action_min.fill(self.task.action_low)
+        action_max = np.empty((self.task.num_actions))
+        action_max.fill(self.task.action_high)
+        action = np.minimum(action_max, np.maximum(action_min, action))
 
         return action
 
@@ -111,7 +112,6 @@ class DeepDPGAgent(BaseAgent):
             dones = np.expand_dims(np.array([t[4] for t in batch], dtype=np.float32), axis=1)
 
             y = rewards + self.gamma * self.critic.get_target_value(states, self.actor.get_target_action(states)) * (1-dones)
-            self.critic.learn(prev_states, prev_actions, y)
             self.critic.learn(prev_states, prev_actions, y)
             self.actor.learn(prev_states)
 
@@ -138,6 +138,7 @@ class DeepDPGAgent(BaseAgent):
 
     def load(self, path):
         self.saver.restore(self.session, path)
+        print("Agent has been loaded from " + path)
 
     def save(self, path):
         self.saver.save(self.session, path)
